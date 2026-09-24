@@ -1,0 +1,24 @@
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { API_BASE_URL } from "@/lib/api";
+import { ACCESS_COOKIE } from "@/lib/cookies";
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const cookieStore = await cookies();
+  const access = cookieStore.get(ACCESS_COOKIE)?.value;
+  if (!access) {
+    return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+  }
+
+  const backendRes = await fetch(`${API_BASE_URL}/api/v1/teams/members/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${access}` },
+  });
+
+  const data = await backendRes.json().catch(() => ({}));
+  return NextResponse.json(data, { status: backendRes.status });
+}
