@@ -1,5 +1,6 @@
 import { getProfileOrRedirect, getMyTeamOrRedirect } from "@/lib/session";
 import ResearchEngineView from "@/components/research/research-engine-view";
+import ProGate from "@/components/billing/pro-gate";
 
 export default async function ResearchPage() {
   const [, team] = await Promise.all([getProfileOrRedirect(), getMyTeamOrRedirect()]);
@@ -12,7 +13,9 @@ export default async function ResearchPage() {
           Validate your idea against the market before you build it.
         </p>
       </div>
-      <ResearchEngineView hasTeam={!!team} />
+      <ProGate>
+        <ResearchEngineView hasTeam={!!team} />
+      </ProGate>
     </div>
   );
 }

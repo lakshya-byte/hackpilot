@@ -67,8 +67,13 @@ export default function AuthSystemPage() {
       <Section title="1. Signup + email verification" id="signup">
         <P>
           <InlineCode>POST /api/v1/auth/signup</InlineCode> creates the user
-          as <InlineCode>is_verified: false</InlineCode> and immediately
-          issues an OTP. The user cannot log in until they verify it.
+          as <InlineCode>is_verified: false</InlineCode>, explicitly sets{" "}
+          <InlineCode>plan_details.plan = &quot;free&quot;</InlineCode> (see{" "}
+          <a href="/docs/backend/billing" className="text-primary underline underline-offset-2">
+            Billing &amp; Plans
+          </a>
+          ), and immediately issues an OTP. The user cannot log in until they
+          verify it.
         </P>
         <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-gutter overflow-x-auto">
           <div className="flex items-center min-w-[820px]">
@@ -78,7 +83,7 @@ export default function AuthSystemPage() {
             <Arrow />
             <FlowBox title="check email unique" subtitle="UserRepository" />
             <Arrow />
-            <FlowBox title="bcrypt hash + insert user" />
+            <FlowBox title="bcrypt hash + insert user" subtitle="plan_details.plan = free" />
             <Arrow />
             <FlowBox title="generate + store OTP" subtitle="HMAC hash, 10m TTL" />
             <Arrow />

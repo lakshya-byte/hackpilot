@@ -7,6 +7,7 @@ import HistorySidebar from "./history-sidebar";
 import IdeaForm from "./idea-form";
 import IdeaCard from "./idea-card";
 import IdeaLoader from "./idea-loader";
+import { usePlan } from "@/components/billing/plan-provider";
 
 export default function IdeaEngineView({ hasTeam }: { hasTeam: boolean }) {
   const [history, setHistory] = useState<GeneratedIdeaSet[]>([]);
@@ -14,8 +15,10 @@ export default function IdeaEngineView({ hasTeam }: { hasTeam: boolean }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [formError, setFormError] = useState("");
+  const [limitReached, setLimitReached] = useState(false);
   const [shortlistError, setShortlistError] = useState("");
   const [shortlistBusyKey, setShortlistBusyKey] = useState<string | null>(null);
+  const { status: plan, isPro, refresh: refreshPlan } = usePlan();
 
   const selected = useMemo(
     () => history.find((g) => g.id === selectedId) ?? null,
@@ -44,6 +47,7 @@ export default function IdeaEngineView({ hasTeam }: { hasTeam: boolean }) {
   async function handleGenerate(input: GenerateIdeasInput) {
     setGenerating(true);
     setFormError("");
+    setLimitReached(false);
     try {
       const res = await fetch("/api/ideas/generate", {
         method: "POST",
@@ -52,12 +56,17 @@ export default function IdeaEngineView({ hasTeam }: { hasTeam: boolean }) {
       });
       const data = await res.json();
       if (!res.ok) {
-        setFormError(data.error ?? "Couldn't generate ideas.");
+        if (res.status === 403) {
+          setLimitReached(true);
+        } else {
+          setFormError(data.error ?? "Couldn't generate ideas.");
+        }
         return;
       }
       const generated = data as GeneratedIdeaSet;
       setHistory((prev) => [generated, ...prev]);
       setSelectedId(generated.id);
+      refreshPlan(); // the free-tier usage counter just changed
     } catch {
       setFormError("Couldn't reach the server. Please try again.");
     } finally {
@@ -145,7 +154,28 @@ export default function IdeaEngineView({ hasTeam }: { hasTeam: boolean }) {
       />
 
       <div>
+        {!isPro && plan && (
+          <p className="mb-space-sm font-body text-body-sm text-on-surface-variant">
+            {plan.idea_generations_used_this_month} of {plan.idea_generations_limit} free generations used this
+            month
+          </p>
+        )}
+
         {generating && <IdeaLoader />}
+
+        {limitReached && (
+          <div className="rounded-2xl p-space-lg bg-error-container mb-space-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-space-sm">
+            <p className="font-body text-body-md text-on-error-container">
+              You&apos;ve used all 3 free idea generations this month.
+            </p>
+            <Link
+              href="/pricing"
+              className="inline-flex px-gutter py-2 bg-primary text-on-primary font-display text-label-md rounded-xl hover:bg-surface-tint transition-all whitespace-nowrap"
+            >
+              Upgrade to Pro
+            </Link>
+          </div>
+        )}
 
         {!generating && !selected && (
           <IdeaForm onSubmit={handleGenerate} submitting={generating} error={formError} />

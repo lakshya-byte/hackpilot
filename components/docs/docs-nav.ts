@@ -67,6 +67,36 @@ export const docsNav: DocNavGroup[] = [
         description: "Calls the AI agent, saves a market research brief per team",
       },
       {
+        title: "Checklist",
+        href: "/docs/backend/checklist",
+        icon: "checklist",
+        description: "Phase-based pre-hackathon checklist, seeded per team + hackathon",
+      },
+      {
+        title: "Win Framework",
+        href: "/docs/backend/framework",
+        icon: "flag",
+        description: "Time-boxed phase plan for a hackathon, computed from a start time + duration",
+      },
+      {
+        title: "Pitch Builder",
+        href: "/docs/backend/pitch",
+        icon: "co_present",
+        description: "Rubric-aligned pitch deck generation — Pro plan required",
+      },
+      {
+        title: "Billing & Plans",
+        href: "/docs/backend/billing",
+        icon: "credit_card",
+        description: "Free/Pro plans, Razorpay payments, webhooks, and the expiry cron",
+      },
+      {
+        title: "Analytics & Hackathon Logs",
+        href: "/docs/backend/analytics",
+        icon: "monitoring",
+        description: "Per-team win/loss logging and the stats the admin dashboard reads",
+      },
+      {
         title: "API Reference",
         href: "/docs/api-reference",
         icon: "api",
@@ -93,6 +123,17 @@ export const docsNav: DocNavGroup[] = [
         href: "/docs/frontend",
         icon: "web",
         description: "Next.js routes, components, and the design system",
+      },
+    ],
+  },
+  {
+    label: "Admin Dashboard",
+    items: [
+      {
+        title: "Overview",
+        href: "/docs/admin",
+        icon: "admin_panel_settings",
+        description: "The separate hackpilot-admin app — auth, teams/analytics, revenue",
       },
     ],
   },

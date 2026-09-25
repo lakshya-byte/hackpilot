@@ -151,3 +151,157 @@ export interface ResearchResultSet {
 export interface ResearchHistory {
   researches: ResearchResultSet[];
 }
+
+// Mirrors hackpilot-backend/internal/dto.ChecklistItemResponse
+export interface ChecklistItem {
+  item_id: string;
+  text: string;
+  checked: boolean;
+  updated_at: string;
+}
+
+// Mirrors hackpilot-backend/internal/dto.PhaseResponse
+export interface ChecklistPhase {
+  phase_id: string;
+  label: string;
+  items: ChecklistItem[];
+  progress: number;
+}
+
+// Mirrors hackpilot-backend/internal/dto.ChecklistResponse
+export interface Checklist {
+  id: string;
+  team_id: string;
+  hackathon_id: string;
+  phases: ChecklistPhase[];
+  progress: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Mirrors hackpilot-backend/internal/dto.FrameworkPhaseResponse
+export interface FrameworkPhase {
+  phase_id: string;
+  name: string;
+  percentage: number;
+  description: string;
+  tasks: string[];
+  start_time: string;
+  end_time: string;
+}
+
+// Mirrors hackpilot-backend/internal/dto.WinFrameworkResponse
+export interface WinFramework {
+  id: string;
+  team_id: string;
+  hackathon_name: string;
+  start_time: string;
+  end_time: string;
+  duration_hours: number;
+  phases: FrameworkPhase[];
+  created_at: string;
+}
+
+// Mirrors hackpilot-backend/internal/dto.CreateFrameworkRequest
+export interface CreateFrameworkInput {
+  hackathon_name: string;
+  start_time: string;
+  duration_hours: number;
+}
+
+// Mirrors hackpilot-backend/internal/dto.RubricCriterionInput
+export interface RubricCriterion {
+  criterion: string;
+  weight: number;
+  description: string;
+}
+
+// Mirrors hackpilot-backend/internal/dto.GeneratePitchRequest
+export interface GeneratePitchInput {
+  idea_title: string;
+  idea_description: string;
+  hackathon_type: string;
+  target_audience: string;
+  rubric_criteria: RubricCriterion[];
+  market_gap?: string;
+  differentiation_one_liner?: string;
+}
+
+// Mirrors hackpilot-backend/internal/dto.SlideOutlineResponse
+export interface SlideOutline {
+  slide_number: number;
+  title: string;
+  content: string;
+  talking_points: string[];
+  demo_moment?: string;
+  rubric_criteria_addressed: string[];
+  time_allocation_seconds: number;
+}
+
+// Mirrors hackpilot-backend/internal/dto.RubricCoverageResponse
+export interface RubricCoverage {
+  criterion: string;
+  weight: number;
+  addressed_in_slides: number[];
+  coverage_strength: string;
+}
+
+// Mirrors hackpilot-backend/internal/dto.PitchResultResponse
+export interface PitchResultSet {
+  id: string;
+  team_id: string;
+  idea_title: string;
+  hackathon_type: string;
+  pitch_outline: SlideOutline[];
+  total_duration_seconds: number;
+  opening_hook: string;
+  closing_line: string;
+  demo_flow: string[];
+  rubric_coverage: RubricCoverage[];
+  created_at: string;
+}
+
+// Mirrors hackpilot-backend/internal/dto.PitchHistoryResponse
+export interface PitchHistory {
+  pitches: PitchResultSet[];
+}
+
+// Mirrors hackpilot-backend/internal/dto.ParsedRubricResponse
+export interface ParsedRubric {
+  rubric_criteria: RubricCriterion[];
+}
+
+// Mirrors hackpilot-backend/internal/dto.CreateOrderResponse
+export interface CreateOrderResult {
+  order_id: string;
+  amount: number;
+  currency: string;
+  key_id: string;
+}
+
+// Mirrors hackpilot-backend/internal/dto.BillingStatusResponse
+export interface BillingStatus {
+  plan: "free" | "pro";
+  expires_at?: string;
+  days_remaining: number;
+  idea_generations_used_this_month: number;
+  idea_generations_limit: number;
+}
+
+// Mirrors hackpilot-backend/internal/dto.PaymentRecordResponse
+export interface PaymentRecord {
+  id: string;
+  razorpay_order_id: string;
+  razorpay_payment_id?: string;
+  amount: number;
+  currency: string;
+  status: "created" | "captured" | "failed";
+  plan: string;
+  duration_days: number;
+  created_at: string;
+}
+
+// Mirrors hackpilot-backend/internal/dto.PaymentHistoryResponse
+export interface PaymentHistoryResult {
+  payments: PaymentRecord[];
+}

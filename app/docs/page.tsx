@@ -6,6 +6,7 @@ import {
   Card,
   CodeBlock,
   Callout,
+  InlineCode,
   DocFooterNav,
 } from "@/components/docs/doc-ui";
 
@@ -15,19 +16,20 @@ export default function DocsOverviewPage() {
       <DocHeader
         eyebrow="Introduction"
         title="HackPilot documentation"
-        description="HackPilot is split into three repositories: a Next.js product frontend, a Go monolithic backend, and a Python AI agent service. This is the living reference for how they're built and how they fit together."
+        description="HackPilot is split into four repositories: a Next.js product frontend, a Next.js admin dashboard, a Go monolithic backend, and a Python AI agent service. This is the living reference for how they're built and how they fit together."
       />
 
       <Section title="Repositories">
         <P>
-          The project lives as three sibling folders under one workspace.
+          The project lives as four sibling folders under one workspace.
           There is no shared package manager or monorepo tool (no Turborepo/
           Nx) — each side is an independent, deployable app that talks to the
           others over HTTP.
         </P>
         <CodeBlock
           filename="workspace layout"
-          code={`hackpilot/            # this app — Next.js 16 (App Router) frontend
+          code={`hackpilot/            # this app — Next.js 16 (App Router) product frontend
+hackpilot-admin/      # Next.js 16 — internal admin dashboard, separate JWT domain
 hackpilot-backend/    # Go 1.27 + Gin + MongoDB monolithic backend
 hackpilot-agent/      # Python 3.11+ + FastAPI + LangGraph AI agent service`}
         />
@@ -79,13 +81,57 @@ hackpilot-agent/      # Python 3.11+ + FastAPI + LangGraph AI agent service`}
             </a>
             .
           </Card>
+          <Card icon="checklist" title="Checklist (backend + frontend)">
+            A 4-phase, 23-item pre-hackathon checklist, seeded per team +
+            hackathon, with optimistic toggle-and-sync. See{" "}
+            <a href="/docs/backend/checklist" className="text-primary underline underline-offset-2">
+              Checklist
+            </a>
+            .
+          </Card>
+          <Card icon="flag" title="Win Framework (backend + frontend)">
+            A time-boxed phase plan (Idea &amp; Validation / Build / Pitch
+            Prep) computed from a hackathon&apos;s start time and duration,
+            with a live client-side countdown. See{" "}
+            <a href="/docs/backend/framework" className="text-primary underline underline-offset-2">
+              Win Framework
+            </a>
+            .
+          </Card>
+          <Card icon="co_present" title="Pitch Builder (all 3 repos, Pro only)">
+            Uploads and parses a judging rubric, then generates a
+            slide-by-slide pitch deck scored against it. The first
+            Pro-gated feature. See{" "}
+            <a href="/docs/backend/pitch" className="text-primary underline underline-offset-2">
+              Pitch Builder
+            </a>
+            .
+          </Card>
+          <Card icon="credit_card" title="Billing & Plans (backend + frontend + admin)">
+            Free/Pro plans via a one-time Razorpay payment, feature gating,
+            an hourly expiry cron, and an admin revenue dashboard. See{" "}
+            <a href="/docs/backend/billing" className="text-primary underline underline-offset-2">
+              Billing &amp; Plans
+            </a>
+            .
+          </Card>
           <Card icon="web" title="Frontend app">
             Landing page, all four auth screens, and a dashboard covering
-            Profile, Teams, Idea Engine, and Research Engine — all wired to
-            the real API over httpOnly-cookie sessions; sign-up/forgot/
-            reset-password stay UI-only. See{" "}
+            Profile, Teams, Idea Engine, Research Engine, Checklist, Win
+            Framework, Pitch Builder, and Billing — all wired to the real API
+            over httpOnly-cookie sessions; sign-up/forgot/reset-password stay
+            UI-only. See{" "}
             <a href="/docs/frontend" className="text-primary underline underline-offset-2">
               App Structure
+            </a>
+            .
+          </Card>
+          <Card icon="admin_panel_settings" title="Admin dashboard (hackpilot-admin)">
+            A separate Next.js app for staff: per-team hackathon-log
+            analytics and a Revenue view (KPIs, payments table, manual plan
+            override). See{" "}
+            <a href="/docs/admin" className="text-primary underline underline-offset-2">
+              Admin Dashboard
             </a>
             .
           </Card>
@@ -96,11 +142,14 @@ hackpilot-agent/      # Python 3.11+ + FastAPI + LangGraph AI agent service`}
         <CardGrid>
           <Card icon="dns" title="Backend">
             Go, Gin, MongoDB (official driver), JWT (golang-jwt/v5), bcrypt,
-            Resend for transactional email, Cloudinary for avatar images.
+            Resend for transactional email, Cloudinary for avatar images,
+            Razorpay for Pro-plan payments (hand-rolled net/http + HMAC, no SDK).
           </Card>
           <Card icon="palette" title="Frontend">
             Next.js 16 (App Router), React 19, Tailwind CSS v4 with a custom
-            Material Design 3‑style token system, GSAP for scroll animation.
+            Material Design 3‑style token system, GSAP for scroll animation.{" "}
+            <InlineCode>hackpilot-admin</InlineCode> shares the exact same
+            design tokens with zero shared components.
           </Card>
           <Card icon="smart_toy" title="AI Agent Service">
             Python, FastAPI, LangGraph, langchain-openai (GPT-4o),
@@ -116,7 +165,7 @@ hackpilot-agent/      # Python 3.11+ + FastAPI + LangGraph AI agent service`}
       <Callout type="info" title="This section will grow">
         <P>
           As more of the product is built (Jury Defense, hackathon
-          submissions, billing, etc.), add a new doc group in{" "}
+          submissions, etc.), add a new doc group in{" "}
           <code className="px-1.5 py-0.5 rounded-md bg-surface-container-high font-mono text-body-sm">
             components/docs/docs-nav.ts
           </code>{" "}

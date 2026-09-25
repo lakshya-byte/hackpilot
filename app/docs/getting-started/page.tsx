@@ -30,6 +30,7 @@ export default function GettingStartedPage() {
             ["Resend account", "—", "sending OTP emails"],
             ["OpenAI API key", "—", "Idea Engine & Research Engine (GPT-4o)"],
             ["Tavily API key", "—", "Idea Engine & Research Engine (web search)"],
+            ["Razorpay account (test mode)", "—", "Billing & Plans — Pro upgrade payments"],
           ]}
         />
       </Section>
@@ -68,6 +69,13 @@ go run ./cmd/server`}
               ["MAX_AVATAR_SIZE_MB", "no", "5", "avatar upload size limit"],
               ["AGENT_SERVICE_URL", "no*", "\"\"", "*required for Idea/Research Engine; empty makes those endpoints return 503. Points at hackpilot-agent, e.g. http://localhost:8000"],
               ["AGENT_SERVICE_TIMEOUT", "no", "120s", "Go duration string — generous because the agent makes several sequential LLM calls plus web searches"],
+              ["JWT_ADMIN_SECRET", "yes", "—", "signs admin-token JWTs; boot fails if unset. Deliberately separate from JWT_ACCESS_SECRET — see Admin Dashboard"],
+              ["ADMIN_ACCESS_TOKEN_TTL", "no", "15m", "Go duration string"],
+              ["ADMIN_REFRESH_TOKEN_TTL", "no", "720h (30d)", "Go duration string"],
+              ["ADMIN_SIGNUP_SECRET", "no*", "\"\"", "*required to call POST /admin/auth/signup at all (via X-Admin-Signup-Secret header); unset disables admin signup entirely"],
+              ["RAZORPAY_KEY_ID", "no*", "\"\"", "*required for billing; empty makes /billing/* return 503"],
+              ["RAZORPAY_KEY_SECRET", "no*", "\"\"", "*paired with RAZORPAY_KEY_ID"],
+              ["RAZORPAY_WEBHOOK_SECRET", "no*", "\"\"", "*required for the webhook to accept anything; unset rejects every event"],
             ]}
           />
         </SubSection>
@@ -140,6 +148,59 @@ npm run dev   # http://localhost:3000`}
           </a>{" "}
           for the wiring that&apos;s still needed.
         </P>
+        <Callout type="info" title="Exercising the billing flow locally">
+          <P>
+            A Razorpay <strong>test-mode</strong> card completes the{" "}
+            <InlineCode>/pricing</InlineCode> upgrade flow end to end against
+            the real Checkout.js + verify-payment path. The webhook (
+            <InlineCode>POST /api/v1/webhooks/razorpay</InlineCode>) needs a
+            public URL to receive events during local dev — forward it with{" "}
+            <InlineCode>ngrok</InlineCode> or the Razorpay CLI&apos;s
+            webhook forwarder and register that URL in the Razorpay
+            dashboard.
+          </P>
+        </Callout>
+      </Section>
+
+      <Section title="4. Run the admin dashboard">
+        <P>
+          <InlineCode>hackpilot-admin</InlineCode> is a separate app for staff
+          — team analytics and billing/revenue tooling. See{" "}
+          <a href="/docs/admin" className="text-primary underline underline-offset-2">
+            Admin Dashboard
+          </a>{" "}
+          for what it covers.
+        </P>
+        <CodeBlock
+          filename="terminal"
+          language="bash"
+          code={`cd hackpilot-admin
+npm install
+npm run dev   # http://localhost:3001 (PORT in .env.example)`}
+        />
+        <P>
+          It talks to the same <InlineCode>hackpilot-backend</InlineCode>{" "}
+          (<InlineCode>API_BASE_URL</InlineCode>), but under a completely
+          separate JWT domain — see{" "}
+          <a href="/docs/admin#auth" className="text-primary underline underline-offset-2">
+            Admin Dashboard → Auth
+          </a>
+          .
+        </P>
+        <Callout type="warn" title="There's no admin sign-up page">
+          <P>
+            Create the first admin account with{" "}
+            <InlineCode>ADMIN_SIGNUP_SECRET</InlineCode> set on the backend:
+          </P>
+          <CodeBlock
+            filename="terminal"
+            language="bash"
+            code={`curl -X POST localhost:8080/api/v1/admin/auth/signup \\
+  -H 'Content-Type: application/json' \\
+  -H 'X-Admin-Signup-Secret: change-me-admin-signup-secret' \\
+  -d '{"name":"Priya Nair","email":"priya@hackpilot.dev","password":"password123"}'`}
+          />
+        </Callout>
       </Section>
 
       <Section title="Smoke-testing the API">

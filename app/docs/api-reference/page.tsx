@@ -14,6 +14,7 @@ function Endpoint({
   method,
   path,
   auth,
+  pro,
   description,
   request,
   response,
@@ -22,6 +23,7 @@ function Endpoint({
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   auth?: boolean;
+  pro?: boolean;
   description: string;
   request?: string;
   response: string;
@@ -32,10 +34,20 @@ function Endpoint({
       <div className="flex items-center gap-space-sm px-gutter py-space-md bg-surface-container-low">
         <MethodBadge method={method} />
         <code className="font-mono text-body-md text-on-surface">{path}</code>
-        {auth && (
-          <span className="ml-auto flex items-center gap-space-xs font-display text-label-caps text-on-surface-variant uppercase">
-            <span className="material-symbols-outlined text-[14px]">lock</span>
-            requires access token
+        {(auth || pro) && (
+          <span className="ml-auto flex items-center gap-space-md">
+            {auth && (
+              <span className="flex items-center gap-space-xs font-display text-label-caps text-on-surface-variant uppercase">
+                <span className="material-symbols-outlined text-[14px]">lock</span>
+                requires access token
+              </span>
+            )}
+            {pro && (
+              <span className="flex items-center gap-space-xs font-display text-label-caps text-primary uppercase">
+                <span className="material-symbols-outlined text-[14px]">workspace_premium</span>
+                requires Pro plan
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -410,6 +422,7 @@ export default function ApiReferencePage() {
   "created_at": "2026-01-10T12:00:00Z"
 }`}
           errors={[
+            ["403", `{ "error": "free plan limit reached: 3 idea generations per month, upgrade to Pro for unlimited" }`],
             ["404", `{ "error": "you must be an active member of a team to use this feature" }`],
             ["502", `{ "error": "the AI engine returned an invalid response" }`],
             ["503", `{ "error": "the AI engine is not configured on this server" } / "the AI engine is unavailable"`],
@@ -481,6 +494,436 @@ export default function ApiReferencePage() {
         />
       </Section>
 
+      <Section title="Checklist" id="checklist">
+        <Endpoint
+          method="GET"
+          path="/api/v1/checklist/progress"
+          auth
+          description="Overall checklist completion percentage for the given hackathon, for the caller's team."
+          request={`?hackathonId=SIH2025 (query param)`}
+          response={`{ "progress": 34.78 }`}
+          errors={[["400", `{ "error": "hackathonId is required" }`]]}
+        />
+        <Endpoint
+          method="GET"
+          path="/api/v1/checklist/:hackathonId"
+          auth
+          description="Return the full checklist for this hackathon, creating it from the default template on first access."
+          response={`{
+  "id": "665f5...",
+  "team_id": "665f1...",
+  "hackathon_id": "SIH2025",
+  "phases": [
+    {
+      "phase_id": "phase-1",
+      "label": "1 Week Before",
+      "items": [
+        { "item_id": "phase-1-item-1", "text": "Read rules, rubric, and prize structure", "checked": false, "updated_at": "..." }
+        /* × 5 */
+      ],
+      "progress": 0
+    }
+    /* × 4 phases */
+  ],
+  "progress": 0,
+  "created_at": "...",
+  "updated_at": "..."
+}`}
+          errors={[]}
+        />
+        <Endpoint
+          method="PUT"
+          path="/api/v1/checklist/item"
+          auth
+          description="Toggle one item. Returns the whole updated checklist."
+          request={`{ "hackathon_id": "SIH2025", "phase_id": "phase-1", "item_id": "phase-1-item-1", "checked": true }`}
+          response={`(same shape as GET /checklist/:hackathonId)`}
+          errors={[["404", `{ "error": "checklist not found" } / "checklist item not found"`]]}
+        />
+      </Section>
+
+      <Section title="Win Framework" id="framework">
+        <Endpoint
+          method="POST"
+          path="/api/v1/framework"
+          auth
+          description="Create the caller's team's win framework. One per team."
+          request={`{ "hackathon_name": "Smart India Hackathon 2025", "start_time": "2026-03-01T09:00:00Z", "duration_hours": 36 }`}
+          response={`{
+  "id": "665f6...",
+  "team_id": "665f1...",
+  "hackathon_name": "Smart India Hackathon 2025",
+  "start_time": "2026-03-01T09:00:00Z",
+  "end_time": "2026-03-02T21:00:00Z",
+  "duration_hours": 36,
+  "phases": [
+    { "phase_id": "phase-1", "name": "Idea & Validation", "percentage": 15, "description": "Lock in the problem and solution before writing any code.",
+      "tasks": ["Read the PS", "Run Idea Engine", "Run Research Engine", "Pick the idea", "Write a 1-sentence problem + solution"],
+      "start_time": "2026-03-01T09:00:00Z", "end_time": "2026-03-01T14:24:00Z" }
+    /* phase-2 "Build" 65%, phase-3 "Pitch Prep" 20% */
+  ],
+  "created_at": "..."
+}`}
+          errors={[
+            ["400", `{ "error": "duration_hours must be one of 12, 24, 36, 48, 72" }`],
+            ["409", `{ "error": "a win framework already exists for this team" }`],
+          ]}
+        />
+        <Endpoint
+          method="GET"
+          path="/api/v1/framework/:teamId"
+          auth
+          description="Fetch the caller's own team's framework. :teamId must match the caller's resolved team."
+          response={`(same shape as POST /framework)`}
+          errors={[["404", `{ "error": "win framework not found" }`]]}
+        />
+        <Endpoint
+          method="PUT"
+          path="/api/v1/framework/:id"
+          auth
+          description="Update start_time and/or duration_hours. Both optional; phase times are recomputed from scratch."
+          request={`{ "duration_hours": 48 }`}
+          response={`(the updated framework)`}
+          errors={[
+            ["400", `{ "error": "duration_hours must be one of 12, 24, 36, 48, 72" }`],
+            ["404", `{ "error": "win framework not found" }`],
+          ]}
+        />
+        <Endpoint
+          method="DELETE"
+          path="/api/v1/framework/:id"
+          auth
+          description="Delete the framework so the team can create a new one."
+          response={`{ "message": "framework deleted" }`}
+          errors={[["404", `{ "error": "win framework not found" }`]]}
+        />
+      </Section>
+
+      <Section title="Pitch Builder" id="pitch">
+        <Endpoint
+          method="POST"
+          path="/api/v1/pitch/generate"
+          auth
+          pro
+          description="Generate a rubric-aligned pitch deck via hackpilot-agent. Saves and returns the result."
+          request={`{
+  "idea_title": "CampusPlate",
+  "idea_description": "A dorm food-waste marketplace",
+  "hackathon_type": "Climate & Sustainability",
+  "target_audience": "Students",
+  "rubric_criteria": [{ "criterion": "Technical Feasibility", "weight": 30, "description": "..." }],
+  "market_gap": "...",
+  "differentiation_one_liner": "..."
+}`}
+          response={`{
+  "id": "665f7...",
+  "team_id": "665f1...",
+  "idea_title": "CampusPlate",
+  "hackathon_type": "Climate & Sustainability",
+  "pitch_outline": [
+    { "slide_number": 1, "title": "...", "content": "...", "talking_points": ["..."], "demo_moment": "...",
+      "rubric_criteria_addressed": ["Technical Feasibility"], "time_allocation_seconds": 45 }
+  ],
+  "total_duration_seconds": 300,
+  "opening_hook": "...",
+  "closing_line": "...",
+  "demo_flow": ["..."],
+  "rubric_coverage": [
+    { "criterion": "Technical Feasibility", "weight": 30, "addressed_in_slides": [1, 3], "coverage_strength": "strong" }
+  ],
+  "created_at": "..."
+}`}
+          errors={[
+            ["403", `{ "error": "this feature requires a Pro plan" }`],
+            ["404", `{ "error": "you must be an active member of a team to use this feature" }`],
+            ["502", `{ "error": "the AI engine returned an invalid response" }`],
+            ["503", `{ "error": "the AI engine is not configured on this server" } / "the AI engine is unavailable"`],
+            ["504", `{ "error": "the AI engine took too long to respond" }`],
+          ]}
+        />
+        <Endpoint
+          method="POST"
+          path="/api/v1/pitch/parse-rubric"
+          auth
+          pro
+          description={`multipart/form-data, file field "rubric" — must be application/pdf, ≤10MB. Parsed by hackpilot-agent.`}
+          response={`{ "rubric_criteria": [{ "criterion": "...", "weight": 30, "description": "..." }] }`}
+          errors={[
+            ["400", `{ "error": "rubric must be a PDF file" } / "couldn't extract rubric criteria from that PDF"`],
+            ["403", `{ "error": "this feature requires a Pro plan" }`],
+            ["413", `{ "error": "rubric file is too large" }`],
+          ]}
+        />
+        <Endpoint
+          method="GET"
+          path="/api/v1/pitch/:teamId"
+          auth
+          pro
+          description="All past pitches for the caller's own team, newest first."
+          response={`{ "pitches": [ /* PitchResultResponse, 0 or more */ ] }`}
+          errors={[["403", `{ "error": "this feature requires a Pro plan" }`]]}
+        />
+        <Endpoint
+          method="PUT"
+          path="/api/v1/pitch/:id"
+          auth
+          pro
+          description="Edit the outline, hook, closing line, or demo flow of an existing pitch without regenerating. All fields optional."
+          request={`{ "opening_hook": "A better opening line." }`}
+          response={`(the updated pitch)`}
+          errors={[
+            ["403", `{ "error": "this feature requires a Pro plan" }`],
+            ["404", `{ "error": "pitch not found" }`],
+          ]}
+        />
+      </Section>
+
+      <Section title="Billing" id="billing">
+        <Endpoint
+          method="POST"
+          path="/api/v1/billing/create-order"
+          auth
+          description="Create a Razorpay order for one Pro activation (₹199 / 30 days). Records a pending payment row."
+          response={`{ "order_id": "order_...", "amount": 19900, "currency": "INR", "key_id": "rzp_test_..." }`}
+          errors={[["503", `{ "error": "billing is not configured on this server" }`]]}
+        />
+        <Endpoint
+          method="POST"
+          path="/api/v1/billing/verify-payment"
+          auth
+          description="Verify the Razorpay checkout callback's signature and activate Pro. Idempotent — a duplicate call for an already-captured payment is a no-op."
+          request={`{ "razorpay_order_id": "order_...", "razorpay_payment_id": "pay_...", "razorpay_signature": "..." }`}
+          response={`{ "message": "payment verified, plan activated" }`}
+          errors={[
+            ["400", `{ "error": "payment signature verification failed" }`],
+            ["404", `{ "error": "payment order not found" } — also returned if the order belongs to a different user`],
+            ["503", `{ "error": "billing is not configured on this server" }`],
+          ]}
+        />
+        <Endpoint
+          method="GET"
+          path="/api/v1/billing/status"
+          auth
+          description="Current plan, expiry, and — for free-plan users — this month's idea-generation usage."
+          response={`{
+  "plan": "free",
+  "days_remaining": 0,
+  "idea_generations_used_this_month": 2,
+  "idea_generations_limit": 3
+}
+/* or, for an active Pro user: */
+{ "plan": "pro", "expires_at": "2026-04-10T00:00:00Z", "days_remaining": 12, "idea_generations_used_this_month": 0, "idea_generations_limit": 0 }`}
+          errors={[]}
+        />
+        <Endpoint
+          method="GET"
+          path="/api/v1/billing/history"
+          auth
+          description={`All payment attempts for the caller, newest first — including abandoned checkouts (status "created") and failures.`}
+          response={`{
+  "payments": [
+    { "id": "...", "razorpay_order_id": "order_...", "razorpay_payment_id": "pay_...",
+      "amount": 19900, "currency": "INR", "status": "captured", "plan": "pro", "duration_days": 30, "created_at": "..." }
+  ]
+}`}
+          errors={[]}
+        />
+        <Callout type="info" title="POST /api/v1/webhooks/razorpay isn't user-callable">
+          <P>
+            No JWT — Razorpay calls this server-to-server, authenticated by
+            an <InlineCode>X-Razorpay-Signature</InlineCode> HMAC over the
+            raw request body instead. It handles{" "}
+            <InlineCode>payment.captured</InlineCode> (same idempotent
+            activation as <InlineCode>verify-payment</InlineCode>) and{" "}
+            <InlineCode>payment.failed</InlineCode>. See{" "}
+            <a href="/docs/backend/billing" className="text-primary underline underline-offset-2">
+              Billing &amp; Plans
+            </a>{" "}
+            for the signature scheme.
+          </P>
+        </Callout>
+      </Section>
+
+      <Section title="Admin Auth" id="admin-auth">
+        <Endpoint
+          method="POST"
+          path="/api/v1/admin/auth/signup"
+          description={`Create an admin account. Requires an X-Admin-Signup-Secret header matching ADMIN_SIGNUP_SECRET — unset entirely disables this endpoint. No email verification, no tokens issued (login separately).`}
+          request={`{ "name": "Priya Nair", "email": "priya@hackpilot.dev", "password": "password123" }`}
+          response={`{ "message": "admin account created" }`}
+          errors={[
+            ["403", `{ "error": "admin signup is not permitted" } — missing/wrong header, or ADMIN_SIGNUP_SECRET unset`],
+            ["409", `{ "error": "an admin with that email already exists" }`],
+          ]}
+        />
+        <Endpoint
+          method="POST"
+          path="/api/v1/admin/auth/login"
+          description="Authenticate an admin. Signed with JWT_ADMIN_SECRET — never valid against user-scoped routes."
+          request={`{ "email": "priya@hackpilot.dev", "password": "password123" }`}
+          response={`{
+  "access_token": "...", "refresh_token": "...",
+  "admin": { "id": "...", "name": "Priya Nair", "email": "priya@hackpilot.dev", "created_at": "..." }
+}`}
+          errors={[["401", `{ "error": "invalid email or password" }`]]}
+        />
+        <Endpoint
+          method="POST"
+          path="/api/v1/admin/auth/refresh"
+          description="Rotate an admin refresh token (single-use, same pattern as user auth)."
+          request={`{ "refresh_token": "..." }`}
+          response={`(same shape as login)`}
+          errors={[["401", `{ "error": "invalid or expired refresh token" }`]]}
+        />
+        <Endpoint
+          method="POST"
+          path="/api/v1/admin/auth/logout"
+          description="Revoke one admin refresh token."
+          request={`{ "refresh_token": "..." }`}
+          response={`{ "message": "logged out" }`}
+          errors={[]}
+        />
+      </Section>
+
+      <Section title="Admin Teams" id="admin-teams">
+        <Endpoint
+          method="GET"
+          path="/api/v1/admin/teams"
+          auth
+          description="Search/list all teams platform-wide, for the admin Teams picker."
+          request={`?search=ByteForce (query param, optional)`}
+          response={`{ "teams": [{ "id": "...", "name": "ByteForce Sentinel", "hackathon": "SIH 2025", "lead_id": "...", "member_count": 4, "created_at": "..." }] }`}
+          errors={[]}
+        />
+      </Section>
+
+      <Section title="Admin Billing" id="admin-billing">
+        <Endpoint
+          method="GET"
+          path="/api/v1/admin/billing/overview"
+          auth
+          description="Platform-wide billing KPIs for the Revenue dashboard."
+          response={`{ "total_pro_users": 42, "mrr_estimate": 8358, "payments_today": 3, "payments_this_month": 21 }`}
+          errors={[]}
+        />
+        <Endpoint
+          method="GET"
+          path="/api/v1/admin/billing/payments"
+          auth
+          description="All payment records, optionally filtered."
+          request={`?status=captured&plan=pro (both optional query params)`}
+          response={`{
+  "payments": [
+    { "id": "...", "user_id": "...", "user_name": "Ada Lovelace", "user_email": "ada@example.com",
+      "institution": "IIT Bombay", "razorpay_order_id": "order_...", "razorpay_payment_id": "pay_...",
+      "amount": 19900, "currency": "INR", "status": "captured", "plan": "pro", "duration_days": 30, "created_at": "..." }
+  ]
+}`}
+          errors={[]}
+        />
+        <Endpoint
+          method="GET"
+          path="/api/v1/admin/billing/users/lookup"
+          auth
+          description="Look up a single user by exact email — the entry point for the manual plan-override panel."
+          request={`?email=ada@example.com`}
+          response={`{ "id": "...", "name": "Ada Lovelace", "email": "ada@example.com", "plan": "free" }`}
+          errors={[["404", `{ "error": "user not found" }`]]}
+        />
+        <Endpoint
+          method="PUT"
+          path="/api/v1/admin/billing/users/:id/plan"
+          auth
+          description={`Manually set a user's plan. expires_at is required when plan is "pro" (see the invariant in Billing & Plans).`}
+          request={`{ "plan": "pro", "expires_at": "2026-05-01T00:00:00Z" }`}
+          response={`{ "message": "plan updated" }`}
+          errors={[
+            ["400", `{ "error": "plan must be one of free, pro" } / "expires_at is required when setting plan to pro"`],
+            ["404", `{ "error": "user not found" }`],
+          ]}
+        />
+      </Section>
+
+      <Section title="Analytics" id="analytics">
+        <Callout type="warn" title="Requires admin auth, not user auth">
+          <P>
+            Every endpoint below lives at <InlineCode>/api/v1/analytics/*</InlineCode>{" "}
+            (not <InlineCode>/api/v1/admin/analytics/*</InlineCode>) but still
+            requires an admin access token — there is no user-facing
+            equivalent. See{" "}
+            <a href="/docs/backend/analytics" className="text-primary underline underline-offset-2">
+              Analytics &amp; Hackathon Logs
+            </a>
+            .
+          </P>
+        </Callout>
+        <Endpoint
+          method="POST"
+          path="/api/v1/analytics/log"
+          auth
+          description="Log one hackathon result for a team."
+          request={`{
+  "team_id": "665f1...", "hackathon_name": "SIH 2025", "hackathon_type": "AI & ML",
+  "idea_title": "CampusPlate", "idea_category": "climate", "result": "finalist", "round": "national",
+  "judge_feedback": "Strong demo, weak monetization story.", "team_size": 4, "duration": "36 hours",
+  "pitch_used": true, "checklist_used": true, "date": "2026-02-15T00:00:00Z"
+}`}
+          response={`(the created log, same shape as GET /analytics/:teamId's entries)`}
+          errors={[
+            ["400", `{ "error": "result must be one of won, finalist, top10, eliminated, withdrawn" } / similar for round, idea_category`],
+          ]}
+        />
+        <Endpoint
+          method="GET"
+          path="/api/v1/analytics/stats/:teamId"
+          auth
+          description="Computed stats for one team — see Analytics & Hackathon Logs for how each field is derived."
+          response={`{
+  "total_hackathons": 6, "total_wins": 1, "win_rate": 16.67, "finalist_rate": 33.33,
+  "best_result": "won", "strongest_category": "climate", "weakest_category": "fintech",
+  "best_hackathon_type": "AI & ML", "average_round_reached": "national",
+  "pitch_win_rate": 25.0, "checklist_win_rate": 20.0,
+  "results_breakdown": { "won": 1, "finalist": 2, "top10": 1, "eliminated": 2, "withdrawn": 0 },
+  "category_breakdown": [{ "category": "climate", "total": 3, "wins": 1, "win_rate": 33.33 }],
+  "monthly_activity": [{ "month": "2026-02", "total": 2, "wins": 1 }],
+  "insights": [
+    { "type": "positive", "text": "Your strongest category is Climate with a 33.3% win rate." },
+    { "type": "warning", "text": "You've struggled to advance past the regional round — 2 eliminations with zero wins." },
+    { "type": "tool_correlation", "text": "Teams that used the Pitch Builder won 2.1× more often than those who didn't." }
+  ]
+}`}
+          errors={[]}
+        />
+        <Endpoint
+          method="GET"
+          path="/api/v1/analytics/:teamId"
+          auth
+          description="Raw hackathon logs for a team, newest first."
+          response={`{ "logs": [ /* LogResponse, 0 or more */ ] }`}
+          errors={[]}
+        />
+        <Endpoint
+          method="PUT"
+          path="/api/v1/analytics/:id"
+          auth
+          description="Partially update a log. Every field optional; enum fields re-validated if present."
+          request={`{ "judge_feedback": "Updated after the second round of feedback." }`}
+          response={`(the updated log)`}
+          errors={[
+            ["400", `{ "error": "result must be one of won, finalist, top10, eliminated, withdrawn" }`],
+            ["404", `{ "error": "hackathon log not found" }`],
+          ]}
+        />
+        <Endpoint
+          method="DELETE"
+          path="/api/v1/analytics/:id"
+          auth
+          description="Delete a log entry."
+          response={`{ "message": "log deleted" }`}
+          errors={[["404", `{ "error": "hackathon log not found" }`]]}
+        />
+      </Section>
+
       <Callout type="info" title="Adding a new endpoint">
         <P>
           Add the route in <InlineCode>internal/router/router.go</InlineCode>,
@@ -491,7 +934,7 @@ export default function ApiReferencePage() {
       </Callout>
 
       <DocFooterNav
-        prev={{ title: "Research Engine", href: "/docs/backend/research-engine" }}
+        prev={{ title: "Analytics & Hackathon Logs", href: "/docs/backend/analytics" }}
         next={{ title: "Idea & Research Agent", href: "/docs/agent" }}
       />
     </article>

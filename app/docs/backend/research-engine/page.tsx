@@ -102,7 +102,7 @@ export default function ResearchEnginePage() {
 
       <DocFooterNav
         prev={{ title: "Idea Engine", href: "/docs/backend/idea-engine" }}
-        next={{ title: "API Reference", href: "/docs/api-reference" }}
+        next={{ title: "Checklist", href: "/docs/backend/checklist" }}
       />
     </article>
   );

@@ -14,9 +14,13 @@ const navItems: NavItem[] = [
   { label: "Overview", icon: "dashboard" },
   { label: "Idea Engine", href: "/ideas", icon: "lightbulb" },
   { label: "Research Engine", href: "/research", icon: "travel_explore" },
+  { label: "Checklist", href: "/checklist", icon: "checklist" },
+  { label: "Win Framework", href: "/framework", icon: "flag" },
+  { label: "Pitch Builder", href: "/pitch", icon: "co_present" },
   { label: "Jury Defense", icon: "gavel" },
   { label: "Teams", href: "/teams", icon: "groups" },
   { label: "History & Submissions", icon: "history" },
+  { label: "Billing", href: "/billing", icon: "credit_card" },
   { label: "Profile", href: "/profile", icon: "person" },
   { label: "Settings", icon: "settings" },
 ];

@@ -19,14 +19,16 @@ export default function FrontendPage() {
         description="Route layout, component organization, and the design system that the HackPilot site is built on."
       />
 
-      <Callout type="success" title="Sign-in, Profile, Teams, Idea Engine, and Research Engine are wired to the real API">
+      <Callout type="success" title="Everything under (dashboard) is wired to the real API">
         <P>
           Signup, forgot-password, and reset-password are still self-contained
           UI (form state in <InlineCode>useState</InlineCode>, no network
           calls). Everything under <InlineCode>(dashboard)</InlineCode> —{" "}
           <strong>Profile</strong>, <strong>Teams</strong>,{" "}
-          <strong>Idea Engine</strong>, and <strong>Research Engine</strong> —
-          is real: they call <InlineCode>hackpilot-backend</InlineCode> through
+          <strong>Idea Engine</strong>, <strong>Research Engine</strong>,{" "}
+          <strong>Checklist</strong>, <strong>Win Framework</strong>,{" "}
+          <strong>Pitch Builder</strong>, and <strong>Billing</strong> — is
+          real: they call <InlineCode>hackpilot-backend</InlineCode> through
           a same-origin proxy layer — see{" "}
           <a href="#session" className="text-primary underline underline-offset-2">
             Session &amp; auth wiring
@@ -44,10 +46,15 @@ export default function FrontendPage() {
             ["/sign-up", "app/(auth)/sign-up/page.tsx", "Signup form with a client-side password-strength meter (UI only)"],
             ["/forgot-password", "app/(auth)/forgot-password/page.tsx", "Requests a reset code (UI only)"],
             ["/reset-password", "app/(auth)/reset-password/page.tsx", "Sets a new password (UI only)"],
-            ["/profile", "app/(dashboard)/profile/page.tsx", "Real, editable profile — protected route, wired"],
+            ["/profile", "app/(dashboard)/profile/page.tsx", "Real, editable profile — protected route, wired. Hackathon stats/submissions preview is still static placeholder data"],
             ["/teams", "app/(dashboard)/teams/page.tsx", "Create/join a team, invites, roster, leadership transfer — wired"],
-            ["/ideas", "app/(dashboard)/ideas/page.tsx", "Idea Engine — generate + shortlist ideas, history sidebar — wired"],
+            ["/ideas", "app/(dashboard)/ideas/page.tsx", "Idea Engine — generate + shortlist ideas, history sidebar, free-tier usage counter — wired"],
             ["/research", "app/(dashboard)/research/page.tsx", "Research Engine — research an idea, history sidebar — wired"],
+            ["/checklist", "app/(dashboard)/checklist/page.tsx", "Pre-hackathon checklist, phase-by-phase — wired"],
+            ["/framework", "app/(dashboard)/framework/page.tsx", "Win Framework — time-boxed phase plan with a live countdown — wired"],
+            ["/pitch", "app/(dashboard)/pitch/page.tsx", "Pitch Builder — wired, wrapped in <ProGate> (Pro plan required)"],
+            ["/pricing", "app/(dashboard)/pricing/page.tsx", "Pro plan card + Razorpay upgrade flow — wired"],
+            ["/billing", "app/(dashboard)/billing/page.tsx", "Current plan, days remaining, payment history, renew/upgrade — wired"],
             ["/docs/*", "app/docs/**", "This documentation section"],
           ]}
         />
@@ -199,6 +206,127 @@ lib/session.ts                  Server Component helper: reads the
         </SubSection>
       </Section>
 
+      <Section title="Checklist & Win Framework" id="checklist-framework">
+        <SubSection title="Checklist">
+          <P>
+            <InlineCode>app/(dashboard)/checklist/page.tsx</InlineCode> is a
+            Server Component that only resolves session/team (
+            <InlineCode>hasTeam</InlineCode>, <InlineCode>hackathonId</InlineCode> =
+            the team&apos;s <InlineCode>hackathon</InlineCode> field) — the
+            checklist itself is fetched client-side.{" "}
+            <InlineCode>components/checklist/checklist-view.tsx</InlineCode>{" "}
+            loads it once on mount, then applies every checkbox toggle{" "}
+            <strong>optimistically</strong> (local state flips immediately),
+            fires <InlineCode>PUT /api/checklist/item</InlineCode>, and either
+            replaces local state with the server&apos;s response or rolls the
+            toggle back on failure. No polling — one GET per visit, one PUT
+            per toggle.
+          </P>
+        </SubSection>
+        <SubSection title="Win Framework">
+          <P>
+            <InlineCode>components/framework/framework-view.tsx</InlineCode>{" "}
+            fetches the team&apos;s framework once (treating{" "}
+            <InlineCode>404</InlineCode> as &quot;no framework yet&quot;, showing{" "}
+            <InlineCode>SetupForm</InlineCode> instead), then does all further
+            updates <strong>locally</strong> — a{" "}
+            <InlineCode>setInterval</InlineCode> ticks a{" "}
+            <InlineCode>now</InlineCode> state value every second, and{" "}
+            <InlineCode>CountdownTimer</InlineCode>/<InlineCode>TimelineBar</InlineCode>/
+            <InlineCode>PhaseCard</InlineCode> status all derive from comparing{" "}
+            <InlineCode>now</InlineCode> against the phase start/end times the
+            backend already computed. There&apos;s no server polling for the
+            live countdown — it&apos;s a client clock against a snapshot.
+          </P>
+        </SubSection>
+        <P>
+          See{" "}
+          <a href="/docs/backend/checklist" className="text-primary underline underline-offset-2">
+            Checklist
+          </a>{" "}
+          and{" "}
+          <a href="/docs/backend/framework" className="text-primary underline underline-offset-2">
+            Win Framework
+          </a>{" "}
+          for the backend seed templates and phase-timing math.
+        </P>
+      </Section>
+
+      <Section title="Pitch Builder" id="pitch-builder">
+        <P>
+          <InlineCode>components/pitch/pitch-view.tsx</InlineCode> auto-prefills
+          the generate form by chaining two lookups: the first{" "}
+          <em>shortlisted</em> idea across the team&apos;s Idea Engine history,
+          then a Research Engine result matching that idea&apos;s title (for{" "}
+          <InlineCode>market_gap</InlineCode>/<InlineCode>differentiation_one_liner</InlineCode>{" "}
+          context) — a hacker who ran all three tools in order gets a
+          pre-filled pitch form for free.
+        </P>
+        <P>
+          <InlineCode>RubricUpload</InlineCode> client-validates a PDF (type +
+          10MB cap) before <InlineCode>POST /api/pitch/parse-rubric</InlineCode>;
+          the returned criteria populate{" "}
+          <InlineCode>RubricCriteriaEditor</InlineCode>, which is fully
+          editable and pre-seeded with a default criteria set (
+          <InlineCode>lib/rubric-options.ts</InlineCode>) if no PDF is parsed
+          at all. The generated result renders as a{" "}
+          <InlineCode>SlideNavigator</InlineCode> (click a slide number) +{" "}
+          <InlineCode>SlideDetail</InlineCode> pane, alongside a{" "}
+          <InlineCode>RubricCoveragePanel</InlineCode> (per-criterion weight
+          bar + which slides address it + a Strong/Moderate/Weak{" "}
+          <InlineCode>CoverageStrengthPill</InlineCode>) and a{" "}
+          <InlineCode>PitchStatsPanel</InlineCode> (total duration, opening
+          hook, closing line, demo flow).
+        </P>
+        <P>
+          The whole page is wrapped in{" "}
+          <a href="#billing" className="text-primary underline underline-offset-2">
+            <InlineCode>&lt;ProGate&gt;</InlineCode>
+          </a>{" "}
+          — see{" "}
+          <a href="/docs/backend/pitch" className="text-primary underline underline-offset-2">
+            Pitch Builder
+          </a>{" "}
+          on the backend side for the rubric-upload contract.
+        </P>
+      </Section>
+
+      <Section title="Billing & plan gating" id="billing">
+        <P>
+          <InlineCode>components/billing/plan-provider.tsx</InlineCode> is a
+          client Context mounted once around the whole dashboard shell (in{" "}
+          <InlineCode>app/(dashboard)/layout.tsx</InlineCode>, alongside a
+          small hand-rolled <InlineCode>ToastProvider</InlineCode> — this app
+          has no toast/animation library), fetching{" "}
+          <InlineCode>/api/billing/status</InlineCode> once and exposing it
+          via <InlineCode>usePlan()</InlineCode> to every page below it —
+          `ProGate`, the pricing/billing pages, and the Idea Engine&apos;s
+          usage counter all read the same cached status instead of each
+          fetching independently.
+        </P>
+        <Table
+          head={["Piece", "File", "What it does"]}
+          rows={[
+            ["ProGate", "components/billing/pro-gate.tsx", "Renders children untouched if Pro; otherwise a blurred preview + \"Upgrade to Pro\" overlay. Wraps the Pitch Builder page — the only Pro-gated feature (Research Engine is free)"],
+            ["useUpgradeFlow", "components/billing/use-upgrade-flow.ts", "Loads checkout.js on demand (not eagerly, only when the upgrade button is clicked), drives create-order → Razorpay Checkout → verify-payment, then confetti + toast + redirect to /billing"],
+            ["ConfettiBurst", "components/shared/confetti-burst.tsx", "Dependency-free canvas confetti, colors read from the design system's CSS variables at mount, not hardcoded"],
+            ["Idea Engine counter", "components/ideas/idea-engine-view.tsx", "Shows \"X of 3 free generations used this month\" for free users; a 403 from /api/ideas/generate renders the specific upsell instead of a generic error"],
+          ]}
+        />
+        <Callout type="info" title="The real gate is always the backend">
+          <P>
+            <InlineCode>ProGate</InlineCode> and the usage counter are UX
+            only — the backend&apos;s <InlineCode>RequirePro</InlineCode>{" "}
+            middleware and free-tier count check are what actually enforce
+            anything. See{" "}
+            <a href="/docs/backend/billing" className="text-primary underline underline-offset-2">
+              Billing &amp; Plans
+            </a>
+            .
+          </P>
+        </Callout>
+      </Section>
+
       <Section title="Landing page composition">
         <P>
           <InlineCode>components/landing/landing-page.tsx</InlineCode> composes
@@ -301,7 +429,10 @@ smooth-scroll.tsx / gsap.ts → Lenis smooth-scroll + GSAP setup, shared`}
         </ul>
       </Section>
 
-      <DocFooterNav prev={{ title: "Idea & Research Agent", href: "/docs/agent" }} />
+      <DocFooterNav
+        prev={{ title: "Idea & Research Agent", href: "/docs/agent" }}
+        next={{ title: "Admin Dashboard", href: "/docs/admin" }}
+      />
     </article>
   );
 }

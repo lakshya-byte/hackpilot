@@ -22,8 +22,10 @@ export default function IdeaEnginePage() {
 
       <Section title="Request flow">
         <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-gutter overflow-x-auto">
-          <div className="flex items-center min-w-[900px]">
+          <div className="flex items-center min-w-[1040px]">
             <FlowBox title="IdeaHandler.GenerateIdeas" subtitle="bind dto.GenerateIdeasRequest" />
+            <Arrow />
+            <FlowBox title="BillingService.CheckIdeaGenerationAllowed" subtitle="free: max 3/month" tone="primary" />
             <Arrow />
             <FlowBox title="resolveActiveTeam" subtitle="lead or active member only" tone="primary" />
             <Arrow />
@@ -31,7 +33,7 @@ export default function IdeaEnginePage() {
             <Arrow />
             <FlowBox title="AgentClient.GenerateIdeas" subtitle="POST hackpilot-agent /generate-ideas" tone="primary" />
             <Arrow />
-            <FlowBox title="GeneratedIdeaRepository.Create" subtitle="save before returning" />
+            <FlowBox title="GeneratedIdeaRepository.Create" subtitle="save + stamp requested_by, before returning" />
           </div>
         </div>
         <P>
@@ -39,7 +41,16 @@ export default function IdeaEnginePage() {
           response is returned, so the response body carries the real,
           persisted <InlineCode>id</InlineCode> — the frontend&apos;s
           Shortlist button needs that id immediately, with no separate
-          &quot;unsaved preview&quot; state.
+          &quot;unsaved preview&quot; state. Every saved generation is stamped
+          with <InlineCode>requested_by</InlineCode> (the calling user, not
+          just the team) — that&apos;s what the free-tier gate counts against.
+          A Pro user skips the gate entirely; a free user at the monthly cap
+          gets a <InlineCode>403</InlineCode> before the agent is ever
+          called. See{" "}
+          <a href="/docs/backend/billing" className="text-primary underline underline-offset-2">
+            Billing &amp; Plans
+          </a>
+          .
         </P>
       </Section>
 

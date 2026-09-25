@@ -42,7 +42,17 @@ export default function ArchitecturePage() {
               tone="primary"
             />
             <Arrow label="Mongo wire protocol" />
-            <FlowBox title="MongoDB" subtitle="users · teams · generated_ideas · research_results · ..." />
+            <FlowBox title="MongoDB" subtitle="14 collections — users, teams, payments, ..." />
+          </div>
+          <div className="mt-space-md flex items-center gap-0 min-w-[720px]">
+            <FlowBox title="Browser" subtitle="admin staff" />
+            <Arrow label="HTTPS" />
+            <FlowBox
+              title="hackpilot-admin (Next.js)"
+              subtitle="App Router · separate cookie/JWT domain"
+            />
+            <Arrow label="JSON / REST (server-to-server)" />
+            <FlowBox title="same hackpilot-backend" tone="primary" />
           </div>
           <div className="mt-space-md flex justify-end min-w-[720px]">
             <div className="flex items-center">
@@ -58,33 +68,39 @@ export default function ArchitecturePage() {
           </div>
           <div className="mt-space-md flex justify-end min-w-[720px]">
             <div className="flex items-center">
-              <Arrow label="HTTPS (OTP emails, avatars)" />
-              <FlowBox title="Resend + Cloudinary" subtitle="email & image APIs" tone="outline" />
+              <Arrow label="HTTPS (OTP emails, avatars, payments)" />
+              <FlowBox title="Resend + Cloudinary + Razorpay" subtitle="email, image & payment APIs" tone="outline" />
             </div>
           </div>
         </div>
         <Callout type="info" title="The browser never talks to the Go API or the agent directly">
           <P>
-            Every dashboard feature (Profile, Teams, Idea Engine, Research
-            Engine) goes through same-origin <InlineCode>/api/*</InlineCode>{" "}
-            route handlers in the Next.js app (a BFF layer), which hold the
-            JWT access/refresh tokens in httpOnly cookies and forward
-            requests to the Go backend server-to-server. The Go backend is,
-            in turn, the only thing that ever calls{" "}
-            <InlineCode>hackpilot-agent</InlineCode> — the frontend has no
-            direct network path to it, and the agent itself never touches
-            MongoDB (the Go layer saves its responses). The{" "}
-            <InlineCode>HTTPS</InlineCode> arrow at the top is browser ↔
-            Next.js only. See{" "}
+            Every dashboard feature in both frontends goes through
+            same-origin <InlineCode>/api/*</InlineCode> route handlers (a BFF
+            layer), which hold JWT access/refresh tokens in httpOnly cookies
+            and forward requests to the Go backend server-to-server.{" "}
+            <InlineCode>hackpilot-admin</InlineCode> follows this exact same
+            pattern, entirely independently — its own cookies, its own JWT
+            secret (<InlineCode>JWT_ADMIN_SECRET</InlineCode>), never sharing
+            a session with <InlineCode>hackpilot</InlineCode>. The Go backend
+            is, in turn, the only thing that ever calls{" "}
+            <InlineCode>hackpilot-agent</InlineCode> or Razorpay — neither
+            frontend has a direct network path to them, and the agent itself
+            never touches MongoDB (the Go layer saves its responses). See{" "}
             <a href="/docs/frontend" className="text-primary underline underline-offset-2">
               App Structure
             </a>{" "}
-            for the session flow, and{" "}
+            and{" "}
+            <a href="/docs/admin" className="text-primary underline underline-offset-2">
+              Admin Dashboard
+            </a>{" "}
+            for each frontend&apos;s session flow, and{" "}
             <a href="/docs/api-reference" className="text-primary underline underline-offset-2">
               API Reference
             </a>{" "}
             for the Go endpoints themselves. Sign-up, forgot-password, and
-            reset-password still aren&apos;t wired.
+            reset-password on <InlineCode>hackpilot</InlineCode> still
+            aren&apos;t wired.
           </P>
         </Callout>
       </Section>
@@ -120,31 +136,41 @@ export default function ArchitecturePage() {
         </P>
         <CodeBlock
           filename="hackpilot-backend/internal"
-          code={`router      →  HTTP routes, groups /api/v1/{auth,users,teams,ideas,research},
-               wires middleware onto protected groups
+          code={`router      →  HTTP routes, groups /api/v1/{auth,users,teams,ideas,research,
+               checklist,framework,pitch,billing,admin,analytics,webhooks},
+               wires middleware onto protected groups (RequireAuth,
+               RequirePro, RequireAdminAuth)
 
 handler     →  Gin handlers: bind + validate JSON, call a service method,
                map domain errors → HTTP status codes (shared handleServiceError)
 
 service     →  business logic: AuthService, ProfileService, TeamService,
-               IdeaService, ResearchService — orchestrate repositories +
-               mailer/uploader/agentclient + utils, own all errors.
+               IdeaService, ResearchService, ChecklistService,
+               WinFrameworkService, PitchService, BillingService,
+               AdminAuthService, AdminTeamService, AnalyticsService —
+               orchestrate repositories + mailer/uploader/agentclient +
+               utils, own all errors.
                team_access.go holds resolveActiveTeam()/teamSkills(), shared
-               by IdeaService and ResearchService (both need "the caller's
-               active team" and "that team's skills" the same way)
+               by IdeaService, ResearchService, ChecklistService,
+               WinFrameworkService, and PitchService (all need "the caller's
+               active team" the same way)
 
 repository  →  one struct per MongoDB collection (users, otps, refresh_tokens,
-               teams, generated_ideas, research_results), only CRUD + index
-               setup, no business rules
+               teams, generated_ideas, research_results, checklists,
+               win_frameworks, pitch_results, admin_users,
+               admin_refresh_tokens, hackathon_logs, payments, events),
+               only CRUD + index setup, no business rules
 
 agentclient →  the first raw net/http client in this codebase (existing
-               integrations wrap SDKs) — one HTTPAgentClient, two methods
-               (GenerateIdeas, ResearchIdea) against hackpilot-agent
+               integrations wrap SDKs) — one HTTPAgentClient, four methods
+               (GenerateIdeas, ResearchIdea, GeneratePitch, ParseRubric)
+               against hackpilot-agent
 
 models      →  MongoDB document structs (bson tags)
 dto         →  HTTP request/response structs (json + validator tags)
 
-middleware  →  RequireAuth (JWT check), CORS
+middleware  →  RequireAuth (user JWT), RequirePro (fresh Mongo plan check),
+               RequireAdminAuth (separate admin JWT), CORS
 utils       →  bcrypt hashing, OTP generation/HMAC hashing, JWT sign/parse,
                username slugify
 mailer      →  Mailer interface + ResendMailer implementation
@@ -152,6 +178,16 @@ uploader    →  Uploader interface + CloudinaryUploader implementation
 config      →  env var loading, typed Config struct
 db          →  Mongo client connect/ping helper`}
         />
+        <P>
+          One runtime concern lives outside this request-handling stack
+          entirely: <InlineCode>main.go</InlineCode> also starts a goroutine
+          that hourly downgrades expired Pro users, sharing the server&apos;s
+          own shutdown signal — see{" "}
+          <a href="/docs/backend/billing" className="text-primary underline underline-offset-2">
+            Billing &amp; Plans
+          </a>
+          .
+        </P>
         <SubSection title="Request lifecycle example">
           <P>A call to <InlineCode>POST /api/v1/auth/login</InlineCode> flows as:</P>
           <div className="rounded-2xl border border-outline-variant bg-surface-container-low p-gutter overflow-x-auto">
@@ -202,11 +238,16 @@ db          →  Mongo client connect/ping helper`}
     reset-password/page.tsx   "/reset-password"   — UI only
 
   (dashboard)/            route group — no URL segment
-    layout.tsx             DashboardShell: sidebar + topbar
-    profile/page.tsx        "/profile"  — protected, wired to the API
-    teams/page.tsx           "/teams"    — protected, wired
-    ideas/page.tsx           "/ideas"    — protected, wired (Idea Engine)
-    research/page.tsx        "/research" — protected, wired (Research Engine)
+    layout.tsx             DashboardShell + PlanProvider + ToastProvider
+    profile/page.tsx        "/profile"   — protected, wired to the API
+    teams/page.tsx           "/teams"     — protected, wired
+    ideas/page.tsx           "/ideas"     — protected, wired (Idea Engine, free-tier metered)
+    research/page.tsx        "/research"  — protected, wired (Research Engine)
+    checklist/page.tsx       "/checklist" — protected, wired
+    framework/page.tsx        "/framework" — protected, wired (Win Framework)
+    pitch/page.tsx             "/pitch"     — protected, wired, wrapped in <ProGate>
+    pricing/page.tsx            "/pricing"   — protected, upgrade flow
+    billing/page.tsx             "/billing"   — protected, plan + payment history
 
   api/                    Route Handlers — the BFF/proxy layer, see
     auth/{login,logout,refresh}/route.ts    App Structure
@@ -215,35 +256,53 @@ db          →  Mongo client connect/ping helper`}
     teams/**                  7 routes mirroring /api/v1/teams/*
     ideas/**                  3 routes mirroring /api/v1/ideas/*
     research/**                2 routes mirroring /api/v1/research/*
+    checklist/**                3 routes mirroring /api/v1/checklist/*
+    framework/**                 2 routes mirroring /api/v1/framework/*
+    pitch/**                      4 routes mirroring /api/v1/pitch/*
+    billing/**                     4 routes mirroring /api/v1/billing/*
 
   docs/                   this documentation section
     layout.tsx             sidebar + topbar shell
     page.tsx, .../page.tsx  one route per doc page
 
-proxy.ts                 Next 16's renamed middleware.ts — protects
-                          /profile/*, /teams/*, /ideas/*, /research/*,
-                          silently rotates expired tokens`}
+proxy.ts                 Next 16's renamed middleware.ts — protects the
+                          entire (dashboard) route group, silently rotates
+                          expired tokens`}
         />
         <P>
           See{" "}
           <a href="/docs/frontend" className="text-primary underline underline-offset-2">
             App Structure
           </a>{" "}
-          for the component breakdown and design system.
+          for the component breakdown and design system.{" "}
+          <InlineCode>hackpilot-admin</InlineCode> is a separately-deployed
+          4th app with its own route tree, cookies, and JWT domain — see{" "}
+          <a href="/docs/admin" className="text-primary underline underline-offset-2">
+            Admin Dashboard
+          </a>{" "}
+          rather than duplicating it here.
         </P>
       </Section>
 
       <Section title="Data model">
-        <P>Six MongoDB collections, all in one database:</P>
+        <P>14 MongoDB collections, all in one database:</P>
         <Table
           head={["Collection", "Purpose", "Key indexes"]}
           rows={[
-            ["users", "one document per account — auth fields plus profile fields (bio, socials, avatar_url, tech_stack, ...)", "unique index on email; unique index on username"],
+            ["users", "one document per account — auth, profile, and plan_details (billing) fields", "unique index on email; unique index on username"],
             ["otps", "current OTP per (email, purpose)", "TTL index on expires_at; compound index on (email, purpose)"],
             ["refresh_tokens", "hashed, revocable refresh tokens", "TTL index on expires_at; index on token_hash"],
             ["teams", "one document per team — lead_id, denormalized member snapshots (name/username/photo/primary_skill/role/status)", "index on lead_id; index on members.user_id"],
-            ["generated_ideas", "one document per Idea Engine generation — 5 scored ideas + a shortlisted flag per idea", "compound index on (team_id, created_at desc)"],
+            ["generated_ideas", "one document per Idea Engine generation — 5 scored ideas + a shortlisted flag per idea, plus requested_by for free-tier metering", "compound index on (team_id, created_at desc)"],
             ["research_results", "one document per Research Engine run — the full research brief", "compound index on (team_id, created_at desc)"],
+            ["checklists", "one document per (team, hackathon) — phases of items, seeded from a fixed template", "unique compound index on (team_id, hackathon_id)"],
+            ["win_frameworks", "one document per team — hackathon start time, duration, and phase percentages", "unique index on team_id"],
+            ["pitch_results", "one document per Pitch Builder generation — slide outline, rubric coverage", "compound index on (team_id, created_at desc)"],
+            ["admin_users", "admin accounts — separate from users entirely", "unique index on email"],
+            ["admin_refresh_tokens", "hashed, revocable admin refresh tokens", "TTL index on expires_at; index on token_hash"],
+            ["hackathon_logs", "self-reported per-team hackathon results, feeding the admin Analytics stats", "compound index on (team_id, date desc)"],
+            ["payments", "one row per Razorpay order — created/captured/failed audit trail", "unique index on razorpay_order_id; index on user_id"],
+            ["events", "insert-only platform events (plan_upgrade, plan_expired, payment_failed) — no reader yet", "index on created_at"],
           ]}
         />
         <Callout type="info" title="TTL indexes = self-cleaning">
